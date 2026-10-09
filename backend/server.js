@@ -42,6 +42,14 @@ app.post("/api/user", async (req, res) => {
     }
 });
 
+app.post("/api/login", async (req, res) => {
+    try {
+        const user = user
+    } catch (error) {
+        console.log(error);
+    }
+})
+
 app.post("/api/request", async (req, res) => {
     const tenant_id = req.user?.id || req.body.tenant_id;
 
@@ -193,5 +201,5 @@ app.post("/api/apartment", async (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log("Server running on server", port);
+    console.log("Server running on port", port);
 });
