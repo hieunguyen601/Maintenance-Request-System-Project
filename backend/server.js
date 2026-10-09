@@ -2,12 +2,39 @@ import express from "express";
 import cors from "cors";
 import pool from "./db.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 app.use(cors());
+
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({
+            message: "Access denied. Token not found!",
+        });
+    }
+
+    const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || "default_secret",
+        (error, decoded) => {
+            if (error) {
+                return res.status(403).json({
+                    message: "Invalid or expired token.",
+                });
+            }
+
+            req.user = decoded;
+            next();
+        },
+    );
+};
 
 app.post("/api/user", async (req, res) => {
     const { first_name, last_name, email, password, role } = req.body;
@@ -43,14 +70,58 @@ app.post("/api/user", async (req, res) => {
 });
 
 app.post("/api/login", async (req, res) => {
-    try {
-        const user = user
-    } catch (error) {
-        console.log(error);
-    }
-})
+    const { email, password } = req.body;
 
-app.post("/api/request", async (req, res) => {
+    if (!email || !password) {
+        return res.status(401).json({
+            message: "Invalid input email or password",
+        });
+    }
+
+    try {
+        const result = await pool.query(
+            `SELECT * FROM users WHERE email = $1;
+            `,
+            [email],
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(401).json({
+                message: "Invalid email or password",
+            });
+        }
+
+        const user = result.rows[0];
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({
+                message: "Invalid email or password",
+            });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            process.env.JWT_SECRET || "default_secret",
+            { expiresIn: "1d" },
+        );
+
+        delete user.password;
+
+        res.status(200).json({
+            message: "Login successfully",
+            token: token,
+            user: user,
+        });
+    } catch (error) {
+        console.log("Login error", error);
+        res.status(500).json({
+            message: "Server error",
+        });
+    }
+});
+
+app.post("/api/request", authenticateToken, async (req, res) => {
     const tenant_id = req.user?.id || req.body.tenant_id;
 
     const {
@@ -113,7 +184,7 @@ app.post("/api/request", async (req, res) => {
 
 app.get("/api/category", async (req, res) => {
     try {
-        const result = new pool.query(
+        const result = await pool.query(
             ` SELECT * FROM categories ORDER BY name ASC
             `,
         );
