@@ -1,0 +1,30 @@
+{
+  "name": "bg",
+  "version": "1.0.0",
+  "description": "Run and deploy Node.js scripts as native background services/daemons on any operating system.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --harmony test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coreybutler/bg.git"
+  },
+  "keywords": [
+    "background",
+    "service",
+    "daemon",
+    "bg",
+    "ngn",
+    "windows",
+    "osx",
+    "mac",
+    "linux"
+  ],
+  "author": "Corey Butler <corey@coreybutler.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/coreybutler/bg/issues"
+  },
+  "homepage": "https://github.com/coreybutler/bg"
+}
