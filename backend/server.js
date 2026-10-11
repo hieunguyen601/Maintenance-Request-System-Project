@@ -20,7 +20,7 @@ const authenticateToken = (req, res, next) => {
         });
     }
 
-    const decoded = jwt.verify(
+    jwt.verify(
         token,
         process.env.JWT_SECRET || "default_secret",
         (error, decoded) => {
@@ -205,7 +205,7 @@ app.post("/api/comment", async (req, res) => {
     } = req.body;
 
     try {
-        const requestResult = new pool.query(
+        const requestResult = await pool.query(
             `SELECT id FROM maintenance_requests WHERE id = $1
             LIMIT 1
             `,
@@ -217,11 +217,9 @@ app.post("/api/comment", async (req, res) => {
             });
         }
 
-        request_id = requestResult.rows[0].id;
-
         const comments = await pool.query(
             `
-            INSERT INTO comments VALUES (
+            INSERT INTO comments (
                 request_id,
                 user_id,
                 message
