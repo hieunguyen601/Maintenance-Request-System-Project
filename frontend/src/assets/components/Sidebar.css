@@ -1,0 +1,93 @@
+.sidebar {
+  width: 250px;
+  height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.sidebar-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  color: #2563eb;
+  padding: 0 12px;
+  margin-bottom: 40px;
+}
+
+.logo {
+    width: 90px;
+}
+
+.title {
+    font-size: 20px;
+    color: #018dff;
+    font-family: "Plus Jakarta Sans";
+    text-align: center;
+    font-weight: bold;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+  border-radius: 8px;
+
+  color: #64748b;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar-link:hover {
+  background-color: #f1f5f9;
+  color: #2563eb;
+}
+
+.sidebar-link.active {
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  width: 100%;
+  padding: 12px 14px;
+
+  border: none;
+  background: transparent;
+  color: #64748b;
+
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  color: #dc2626;
+}
