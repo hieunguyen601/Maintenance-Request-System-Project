@@ -12,7 +12,7 @@ function Sidebar() {
     return (
         <aside className="sidebar">
             <div className="sidebar-logo">
-                <img className="logo" src='/images/logo.png' alt="logo" />
+
                 <p className="title">Apartment Maintenance Services</p>
             </div>
             <nav className="sidebar-nav">

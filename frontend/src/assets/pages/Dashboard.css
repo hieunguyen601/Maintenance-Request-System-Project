@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  border: 1px solid #868686;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.stat-card h2 {
+  font-size: 32px;
+  margin: 12px 0 4px;
+  font-family: 'Manrope', sans-serif;
+
+}
+
+.stat-card p {
+  color: #2b66e4;
+  font-size: 22px;
+  margin: 0;
+}
