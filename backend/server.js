@@ -35,14 +35,21 @@ const authenticateToken = (req, res, next) => {
 };
 
 app.post("/api/user", async (req, res) => {
-    const { first_name, last_name, email, password, role } = req.body;
+    const first_name = req.body.first_name || req.body["first-name"];
+    const last_name = req.body.last_name || req.body["last-name"];
+    const { email, password, role } = req.body;
+
+    if (!first_name || !last_name || !email || !password || !role) {
+        return res.status(400).json({
+            message: "All fields (first_name, last_name, email, password, role) are required.",
+        });
+    }
 
     try {
         const saltRound = 10;
         const hashedPassword = await bcrypt.hash(password, saltRound);
         const user = await pool.query(
             ` INSERT INTO users (
-            
                 first_name,
                 last_name,
                 email,
@@ -60,9 +67,14 @@ app.post("/api/user", async (req, res) => {
             data: user.rows[0],
         });
     } catch (error) {
-        console.log(error);
+        console.error("Error creating user:", error);
+        if (error.code === "23505") {
+            return res.status(409).json({
+                message: "An account with this email already exists.",
+            });
+        }
         res.status(500).json({
-            message: "Server error",
+            message: error.message || "Server error",
         });
     }
 });
@@ -268,6 +280,13 @@ app.post("/api/apartment", async (req, res) => {
             message: "Server error",
         });
     }
+});
+
+app.use((err, req, res, next) => {
+    console.error("Unhandled error:", err);
+    res.status(err.status || 500).json({
+        message: err.message || "Internal server error",
+    });
 });
 
 app.listen(port, () => {
