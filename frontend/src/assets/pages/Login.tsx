@@ -2,20 +2,21 @@ import googleIcon from "../images/google.png";
 import { Link, useNavigate } from "react-router";
 import api from "../../services/api";
 import { useState, type FormEvent, type ChangeEvent } from "react";
+import { isAxiosError } from "axios";
 import "./Login.css";
-
 
 function Login() {
     const [loginData, setLoginData] = useState({
         email: "",
         password: "",
     });
-    
+
+    const [error, setError] = useState("");
 
     const navigate = useNavigate();
 
     const handleLogin = (event: ChangeEvent<HTMLInputElement>) => {
-        const {name, value} = event.target;
+        const { name, value } = event.target;
         setLoginData((prev) => ({
             ...prev,
             [name]: value,
@@ -24,27 +25,33 @@ function Login() {
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        setError("");
 
         try {
-            const response = await api.post("/login", {
-                loginData
-            });
+            const response = await api.post("/login", loginData);
 
             console.log("Signed In Successfully!", response.data);
+            localStorage.setItem("token", response.data.token);
             navigate("/dashboard");
-        } catch(err) {
-            console.error("Login failed:", err);
+        } catch (err: unknown) {
+            if (isAxiosError(err) && err.response?.status === 401) {
+                setError("Invalid email or password. Please try again!");
+            } else {
+                setError("Something went wrong. Please try again!");
+            }
         }
-        
-    }
-
+    };
 
     return (
         <div className="login-page">
             <div className="login-card">
                 <h1 className="login-title">Maintenance Services</h1>
                 <h2 className="login-subtitle">Welcome Back</h2>
-                
+                {error && (
+                    <p className="login-error" role="alert">
+                        {error}
+                    </p>
+                )}
                 <form className="login-form" onSubmit={handleSubmit}>
                     <div className="input-group email-input">
                         <label htmlFor="email">Email</label>
@@ -66,6 +73,8 @@ function Login() {
                             name="password"
                             id="password"
                             placeholder="Enter your password"
+                            value={loginData.password}
+                            onChange={handleLogin}
                             required
                         />
                     </div>
@@ -89,7 +98,8 @@ function Login() {
                 </form>
 
                 <p className="signup-prompt">
-                    Don't have an account yet? <Link to="/signup">Register for free</Link>
+                    Don't have an account yet?{" "}
+                    <Link to="/signup">Register for free</Link>
                 </p>
             </div>
         </div>

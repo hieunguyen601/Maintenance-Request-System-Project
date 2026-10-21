@@ -6,9 +6,17 @@ import {
     UserRound,
     LogOut,
 } from "lucide-react";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import "./Sidebar.css";
 function Sidebar() {
+    const navigate = useNavigate();
+
+    const logOut = () => {
+        localStorage.removeItem('token');
+        navigate("/login", {replace: true});
+    }
+
+
     return (
         <aside className="sidebar">
             <div className="sidebar-logo">
@@ -43,7 +51,7 @@ function Sidebar() {
             </nav>
 
             <div className="sidebar-bottom">
-                <button className="logout-btn" type="button">
+                <button onClick={logOut} className="logout-btn" type="button">
                     <LogOut size={20} />
                     <span>Log Out</span>
                 </button>
