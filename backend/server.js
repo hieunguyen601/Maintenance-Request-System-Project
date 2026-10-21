@@ -282,6 +282,27 @@ app.post("/api/apartment", async (req, res) => {
     }
 });
 
+app.get("/api/me", authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, first_name, last_name, email, role FROM users WHERE id = $1`,
+            [req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(401).json({
+                message: "User not found"
+            });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error"
+        });
+    }
+});
+
 app.use((err, req, res, next) => {
     console.error("Unhandled error:", err);
     res.status(err.status || 500).json({

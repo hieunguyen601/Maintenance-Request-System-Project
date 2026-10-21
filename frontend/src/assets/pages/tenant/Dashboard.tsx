@@ -1,6 +1,6 @@
 import { ClipboardList, Clock, Wrench, CircleCheck } from "lucide-react";
-import StatCard from "../components/StatCard";
-import RequestTable from "../components/RequestTable";
+import StatCard from "../../components/StatCard";
+import RequestTable from "../../components/RequestTable";
 import "./Dashboard.css";
 function Dashboard() {
     return (

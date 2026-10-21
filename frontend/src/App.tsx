@@ -1,9 +1,9 @@
-import Dashboard from "./assets/pages/Dashboard";
+import Dashboard from "./assets/pages/tenant/Dashboard";
 import DashboardLayout from "./assets/Layouts/DashboardLayout";
-import MyRequests from "./assets/pages/MyRequests";
-import MyApartment from "./assets/pages/MyApartment";
-import Profile from "./assets/pages/Profile";
-import NewRequest from "./assets/pages/NewRequest";
+import MyRequests from "./assets/pages/tenant/MyRequests";
+import MyApartment from "./assets/pages/tenant/MyApartment";
+import Profile from "./assets/pages/tenant/Profile";
+import NewRequest from "./assets/pages/tenant/NewRequest";
 import Login from "./assets/pages/Login";
 import SignUp from "./assets/pages/Signup";
 import "./App.css";
@@ -19,7 +19,7 @@ function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/tenant/dashboard" element={<Dashboard />} />
           <Route path="/my-requests" element={<MyRequests />} />
           <Route path="/requests/new" element={<NewRequest />} />
           <Route path="/my-apartment" element={<MyApartment />} />

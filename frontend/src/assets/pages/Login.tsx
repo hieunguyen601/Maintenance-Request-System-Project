@@ -32,7 +32,18 @@ function Login() {
 
             console.log("Signed In Successfully!", response.data);
             localStorage.setItem("token", response.data.token);
-            navigate("/dashboard");
+
+            const role = response.data.user.role;
+
+            if (role === "tenant") {
+                navigate("/tenant/dashboard", { replace: true });
+            } else if (role === "maintenance") {
+                navigate("/maintenance/dashboard", {
+                    replace: true,
+                });
+            } else if (role === "manager") {
+                navigate("/manager/dashboard", { replace: true });
+            }
         } catch (err: unknown) {
             if (isAxiosError(err) && err.response?.status === 401) {
                 setError("Invalid email or password. Please try again!");
