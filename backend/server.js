@@ -15,7 +15,9 @@ const authenticateToken = (req, res, next) => {
     const token = authHeader && authHeader.split(" ")[1];
 
     if (!token) {
-        return next();
+        return res.status(401).json({
+            message: "Access token required. Please log in.",
+        });
     }
 
     jwt.verify(
@@ -283,6 +285,12 @@ app.post("/api/apartment", async (req, res) => {
 });
 
 app.get("/api/me", authenticateToken, async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({
+            message: "Unauthorized",
+        });
+    }
+
     try {
         const result = await pool.query(
             `SELECT id, first_name, last_name, email, role FROM users WHERE id = $1`,
