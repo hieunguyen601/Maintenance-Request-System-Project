@@ -310,6 +310,42 @@ app.get("/api/me", authenticateToken, async (req, res) => {
     }
 });
 
+app.get("/api/manager/requests", authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== "manager") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
+        const result = await pool.query(`
+            SELECT
+                mr.id,
+                mr.title,
+                mr.description,
+                mr.priority,
+                mr.status,
+                mr.assigned_to,
+                mr.created_at,
+                c.name AS category,
+                a.unit_number
+            FROM maintenance_requests mr
+            LEFT JOIN categories c
+                ON mr.category_id = c.id
+            LEFT JOIN apartments a
+                ON mr.apartment_id = a.id
+            ORDER BY mr.created_at DESC
+            `);
+
+            res.status(200).json(result.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Server error",
+        });
+    }
+});
+
 app.use((err, req, res, next) => {
     console.error("Unhandled error:", err);
     res.status(err.status || 500).json({

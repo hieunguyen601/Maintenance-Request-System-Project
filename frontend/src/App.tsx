@@ -9,6 +9,8 @@ import "./App.css";
 import { Route, Routes, Navigate } from "react-router";
 import NewRequest from "./assets/pages/tenant/NewRequest";
 import MyRequests from "./assets/pages/tenant/MyRequests";
+import AssignedRequests from "./assets/pages/maintenance/AssignedRequests";
+import AllRequests from "./assets/pages/manager/AllRequests";
 
 function App() {
   return (
@@ -32,12 +34,14 @@ function App() {
             path="/maintenance/dashboard"
             element={<MaintenanceDashboard />}
           />
+          <Route path="/maintenance/requests" element={<AssignedRequests />} />
         </Route>
       </Route>
 
       <Route element={<RoleGuard allowedRole="manager" />}>
         <Route element={<DashboardLayout role="manager" />}>
           <Route path="/manager/dashboard" element={<ManagerDashboard />} />
+          <Route path="/manager/requests" element={<AllRequests />} />
         </Route>
       </Route>
     </Routes>
