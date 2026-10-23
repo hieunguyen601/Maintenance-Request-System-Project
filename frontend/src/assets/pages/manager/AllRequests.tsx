@@ -29,7 +29,6 @@ function AllRequests() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
 
-    // 1. Fetch requests and workers on component mount
     const fetchData = async () => {
         try {
             const [requestsRes, workersRes] = await Promise.all([
@@ -47,7 +46,6 @@ function AllRequests() {
         fetchData();
     }, []);
 
-    // 2. Assign worker to a maintenance request
     const handleAssign = async (requestId: number, workerId: string) => {
         try {
             await api.patch(`/manager/requests/${requestId}/assign`, {
@@ -61,7 +59,6 @@ function AllRequests() {
         }
     };
 
-    // 3. Filter requests by search text and status dropdown
     const filteredRequests = requests.filter((req) => {
         const titleMatch = req.title.toLowerCase().includes(search.toLowerCase());
         const unitMatch = req.unit_number?.toLowerCase().includes(search.toLowerCase());
@@ -75,7 +72,6 @@ function AllRequests() {
 
     return (
         <div className="all-requests-page">
-            {/* Page Header */}
             <div className="all-requests-header">
                 <div>
                     <h1>All Maintenance Requests</h1>
@@ -83,7 +79,6 @@ function AllRequests() {
                 </div>
             </div>
 
-            {/* Search and Filter Bar */}
             <div className="all-requests-toolbar">
                 <input
                     type="text"
@@ -105,7 +100,6 @@ function AllRequests() {
                 </select>
             </div>
 
-            {/* Requests Table */}
             <div className="all-requests-card">
                 <table className="manager-table">
                     <thead>
@@ -151,7 +145,6 @@ function AllRequests() {
                                         </span>
                                     </td>
                                     <td>
-                                        {/* Simple inline worker selector */}
                                         <select
                                             className="assign-select"
                                             value={req.assigned_to || ""}
@@ -181,7 +174,6 @@ function AllRequests() {
                 </table>
             </div>
 
-            {/* Simple Details Modal */}
             {selectedRequest && (
                 <div className="modal-overlay" onClick={() => setSelectedRequest(null)}>
                     <div className="modal-content-card" onClick={(e) => e.stopPropagation()}>
