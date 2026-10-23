@@ -328,18 +328,112 @@ app.get("/api/manager/requests", authenticateToken, async (req, res) => {
                 mr.assigned_to,
                 mr.created_at,
                 c.name AS category,
-                a.unit_number
+                a.unit_number,
+                u.first_name AS worker_first_name,
+                u.last_name AS worker_last_name
             FROM maintenance_requests mr
             LEFT JOIN categories c
                 ON mr.category_id = c.id
             LEFT JOIN apartments a
                 ON mr.apartment_id = a.id
+            LEFT JOIN users u
+                ON mr.assigned_to = u.id
             ORDER BY mr.created_at DESC
-            `);
+        `);
 
-            res.status(200).json(result.rows);
+        res.status(200).json(result.rows);
     } catch (error) {
-        console.error(error);
+        console.error("Error fetching manager requests:", error);
+        res.status(500).json({
+            message: "Server error",
+        });
+    }
+});
+
+app.get("/api/manager/workers", authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== "manager") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
+        const result = await pool.query(`
+            SELECT id, first_name, last_name, email
+            FROM users
+            WHERE role = 'maintenance'
+            ORDER BY first_name ASC, last_name ASC;
+        `);
+
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error("Error fetching maintenance workers:", error);
+        res.status(500).json({
+            message: "Server error",
+        });
+    }
+});
+
+app.patch("/api/manager/requests/:id/assign", authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== "manager") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
+        const { id } = req.params;
+        const { assigned_to } = req.body;
+
+        const workerId = assigned_to ? Number(assigned_to) : null;
+
+        let query;
+        let params;
+
+        if (workerId) {
+            query = `
+                UPDATE maintenance_requests
+                SET 
+                    assigned_to = $1::integer,
+                    status = CASE 
+                        WHEN status = 'pending' OR status = 'submitted' THEN 'in_progress' 
+                        ELSE status 
+                    END,
+                    updated_at = NOW()
+                WHERE id = $2
+                RETURNING *;
+            `;
+            params = [workerId, id];
+        } else {
+            query = `
+                UPDATE maintenance_requests
+                SET 
+                    assigned_to = NULL,
+                    status = CASE 
+                        WHEN status = 'in_progress' THEN 'pending' 
+                        ELSE status 
+                    END,
+                    updated_at = NOW()
+                WHERE id = $1
+                RETURNING *;
+            `;
+            params = [id];
+        }
+
+        const result = await pool.query(query, params);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Maintenance request not found",
+            });
+        }
+
+        res.status(200).json({
+            message: workerId ? "Request assigned successfully" : "Request unassigned successfully",
+            data: result.rows[0],
+        });
+    } catch (error) {
+        console.error("Error assigning maintenance request:", error);
         res.status(500).json({
             message: "Server error",
         });

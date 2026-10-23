@@ -13,7 +13,16 @@ import {
     Building2,
     Calendar,
     Eye,
+    UserCheck,
+    UserPlus,
 } from "lucide-react";
+
+export type MaintenanceWorker = {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+};
 
 export type MaintenanceRequest = {
     id: number;
@@ -21,16 +30,20 @@ export type MaintenanceRequest = {
     description: string;
     priority: "low" | "medium" | "high" | string;
     status: "submitted" | "pending" | "in_progress" | "completed" | "cancelled" | string;
-    assigned_to: number | string | null;
+    assigned_to: number | null;
     created_at: string;
     category: string | null;
     unit_number: string | null;
+    worker_first_name?: string | null;
+    worker_last_name?: string | null;
 };
 
 function AllRequests() {
     const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
+    const [workers, setWorkers] = useState<MaintenanceWorker[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>("");
+    const [successToast, setSuccessToast] = useState<string>("");
 
     // Filter & search states
     const [searchTerm, setSearchTerm] = useState<string>("");
@@ -41,11 +54,15 @@ function AllRequests() {
     // Modal state for viewing request details
     const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
 
+    // Modal state for assigning worker
+    const [assigningRequest, setAssigningRequest] = useState<MaintenanceRequest | null>(null);
+    const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
+    const [assignLoading, setAssignLoading] = useState<boolean>(false);
+
     const fetchRequests = async () => {
         try {
             setLoading(true);
             setError("");
-            // api baseURL is http://localhost:3000/api, so calling /manager/requests targets /api/manager/requests
             const response = await api.get<MaintenanceRequest[]>("/manager/requests");
             setRequests(response.data);
         } catch (err: any) {
@@ -59,8 +76,18 @@ function AllRequests() {
         }
     };
 
+    const fetchWorkers = async () => {
+        try {
+            const response = await api.get<MaintenanceWorker[]>("/manager/workers");
+            setWorkers(response.data);
+        } catch (err) {
+            console.error("Error fetching maintenance workers:", err);
+        }
+    };
+
     useEffect(() => {
         fetchRequests();
+        fetchWorkers();
     }, []);
 
     // Unique categories for the filter dropdown
@@ -119,8 +146,11 @@ function AllRequests() {
                 const descMatch = req.description?.toLowerCase().includes(term);
                 const unitMatch = req.unit_number?.toLowerCase().includes(term);
                 const catMatch = req.category?.toLowerCase().includes(term);
+                const workerMatch =
+                    req.worker_first_name?.toLowerCase().includes(term) ||
+                    req.worker_last_name?.toLowerCase().includes(term);
 
-                if (!titleMatch && !descMatch && !unitMatch && !catMatch) {
+                if (!titleMatch && !descMatch && !unitMatch && !catMatch && !workerMatch) {
                     return false;
                 }
             }
@@ -156,18 +186,85 @@ function AllRequests() {
         }
     };
 
+    const openAssignModal = (req: MaintenanceRequest) => {
+        setAssigningRequest(req);
+        setSelectedWorkerId(req.assigned_to ? String(req.assigned_to) : "");
+    };
+
+    const handleAssignSubmit = async () => {
+        if (!assigningRequest) return;
+        try {
+            setAssignLoading(true);
+            const workerId = selectedWorkerId ? Number(selectedWorkerId) : null;
+            const res = await api.patch(`/manager/requests/${assigningRequest.id}/assign`, {
+                assigned_to: workerId,
+            });
+
+            const assignedWorker = workers.find((w) => w.id === workerId);
+            const workerFullName = assignedWorker
+                ? `${assignedWorker.first_name} ${assignedWorker.last_name}`
+                : null;
+
+            // Update in requests state
+            setRequests((prev) =>
+                prev.map((r) =>
+                    r.id === assigningRequest.id
+                        ? {
+                              ...r,
+                              assigned_to: workerId,
+                              worker_first_name: assignedWorker?.first_name || null,
+                              worker_last_name: assignedWorker?.last_name || null,
+                              status: res.data.data?.status || (workerId ? "in_progress" : "pending"),
+                          }
+                        : r
+                )
+            );
+
+            // Also update selectedRequest if details modal is open
+            if (selectedRequest && selectedRequest.id === assigningRequest.id) {
+                setSelectedRequest((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              assigned_to: workerId,
+                              worker_first_name: assignedWorker?.first_name || null,
+                              worker_last_name: assignedWorker?.last_name || null,
+                              status: res.data.data?.status || (workerId ? "in_progress" : "pending"),
+                          }
+                        : null
+                );
+            }
+
+            setSuccessToast(
+                workerFullName
+                    ? `Request #${assigningRequest.id} assigned to ${workerFullName}!`
+                    : `Request #${assigningRequest.id} has been unassigned.`
+            );
+
+            setAssigningRequest(null);
+        } catch (err: any) {
+            console.error("Error assigning maintenance worker:", err);
+            alert(err.response?.data?.message || "Failed to update worker assignment.");
+        } finally {
+            setAssignLoading(false);
+        }
+    };
+
     return (
         <div className="all-requests-page">
             {/* Header */}
             <div className="all-requests-header">
                 <div>
                     <h1>All Maintenance Requests</h1>
-                    <p>Track, filter, and oversee all resident service requests across apartments.</p>
+                    <p>Track, filter, and assign maintenance workers across apartment units.</p>
                 </div>
                 <button
                     type="button"
                     className="refresh-btn"
-                    onClick={fetchRequests}
+                    onClick={() => {
+                        fetchRequests();
+                        fetchWorkers();
+                    }}
                     disabled={loading}
                     title="Reload requests"
                 >
@@ -175,6 +272,20 @@ function AllRequests() {
                     <span>Refresh</span>
                 </button>
             </div>
+
+            {/* Success Toast */}
+            {successToast && (
+                <div className="toast-banner">
+                    <span>{successToast}</span>
+                    <button
+                        type="button"
+                        className="toast-close-btn"
+                        onClick={() => setSuccessToast("")}
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
 
             {/* Error Banner */}
             {error && (
@@ -236,7 +347,7 @@ function AllRequests() {
                     <input
                         type="text"
                         className="search-input"
-                        placeholder="Search by title, description, unit, or category..."
+                        placeholder="Search by title, description, unit, category, or worker..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -343,76 +454,191 @@ function AllRequests() {
                                     <th>Priority</th>
                                     <th>Status</th>
                                     <th>Date</th>
-                                    <th>Assigned</th>
+                                    <th>Assigned Worker</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredRequests.map((req) => (
-                                    <tr key={req.id}>
-                                        <td className="request-id-cell">#{req.id}</td>
-                                        <td className="title-cell">
-                                            <div className="request-main-title">{req.title}</div>
-                                            {req.description && (
-                                                <div className="request-sub-desc" title={req.description}>
-                                                    {req.description}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className="unit-badge">
-                                                {req.unit_number ? `Unit ${req.unit_number}` : "—"}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className="category-tag">
-                                                {req.category || "General"}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={`priority-pill priority-${req.priority?.toLowerCase()}`}
-                                            >
-                                                {req.priority || "Medium"}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={`status-pill status-${req.status?.toLowerCase()}`}
-                                            >
-                                                {req.status?.replace("_", " ") || "Pending"}
-                                            </span>
-                                        </td>
-                                        <td className="date-cell">
-                                            {formatDate(req.created_at)}
-                                        </td>
-                                        <td className="assigned-cell">
-                                            {req.assigned_to ? (
-                                                <span className="assigned-badge">
-                                                    Tech #{req.assigned_to}
+                                {filteredRequests.map((req) => {
+                                    const hasWorker = req.worker_first_name || req.worker_last_name;
+                                    const workerDisplayName = hasWorker
+                                        ? `${req.worker_first_name || ""} ${req.worker_last_name || ""}`.trim()
+                                        : req.assigned_to
+                                        ? `Worker #${req.assigned_to}`
+                                        : null;
+
+                                    return (
+                                        <tr key={req.id}>
+                                            <td className="request-id-cell">#{req.id}</td>
+                                            <td className="title-cell">
+                                                <div className="request-main-title">{req.title}</div>
+                                                {req.description && (
+                                                    <div className="request-sub-desc" title={req.description}>
+                                                        {req.description}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <span className="unit-badge">
+                                                    {req.unit_number ? `Unit ${req.unit_number}` : "—"}
                                                 </span>
-                                            ) : (
-                                                <span className="unassigned-text">Unassigned</span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className="view-details-btn"
-                                                onClick={() => setSelectedRequest(req)}
-                                                title="View request details"
-                                            >
-                                                <Eye size={14} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                                                Details
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td>
+                                                <span className="category-tag">
+                                                    {req.category || "General"}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span
+                                                    className={`priority-pill priority-${req.priority?.toLowerCase()}`}
+                                                >
+                                                    {req.priority || "Medium"}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span
+                                                    className={`status-pill status-${req.status?.toLowerCase()}`}
+                                                >
+                                                    {req.status?.replace("_", " ") || "Pending"}
+                                                </span>
+                                            </td>
+                                            <td className="date-cell">
+                                                {formatDate(req.created_at)}
+                                            </td>
+                                            <td className="assigned-cell">
+                                                {workerDisplayName ? (
+                                                    <span className="assigned-badge">
+                                                        {workerDisplayName}
+                                                    </span>
+                                                ) : (
+                                                    <span className="unassigned-text">Unassigned</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <div className="actions-cell-wrapper">
+                                                    <button
+                                                        type="button"
+                                                        className="assign-action-btn"
+                                                        onClick={() => openAssignModal(req)}
+                                                        title={req.assigned_to ? "Reassign worker" : "Assign worker"}
+                                                    >
+                                                        {req.assigned_to ? (
+                                                            <UserCheck size={14} />
+                                                        ) : (
+                                                            <UserPlus size={14} />
+                                                        )}
+                                                        {req.assigned_to ? "Reassign" : "Assign"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="view-details-btn"
+                                                        onClick={() => setSelectedRequest(req)}
+                                                        title="View request details"
+                                                    >
+                                                        <Eye size={14} />
+                                                        Details
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 )}
             </div>
+
+            {/* Assign Worker Modal */}
+            {assigningRequest && (
+                <div
+                    className="modal-overlay"
+                    onClick={() => !assignLoading && setAssigningRequest(null)}
+                >
+                    <div
+                        className="modal-content-card"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="modal-header">
+                            <h2>
+                                {assigningRequest.assigned_to ? "Reassign" : "Assign"} Maintenance Worker
+                            </h2>
+                            <button
+                                type="button"
+                                className="modal-close-btn"
+                                onClick={() => setAssigningRequest(null)}
+                                disabled={assignLoading}
+                                title="Close modal"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="modal-body">
+                            <div className="modal-detail-group">
+                                <span className="modal-detail-label">Request</span>
+                                <div className="modal-detail-value" style={{ fontWeight: 600 }}>
+                                    #{assigningRequest.id} - {assigningRequest.title}
+                                </div>
+                                <div style={{ fontSize: "13px", color: "#64748b" }}>
+                                    {assigningRequest.unit_number ? `Unit ${assigningRequest.unit_number}` : "No Unit"} • Category: {assigningRequest.category || "General"}
+                                </div>
+                            </div>
+
+                            <div className="modal-detail-group">
+                                <label htmlFor="worker-select" className="modal-detail-label">
+                                    Select Maintenance Technician
+                                </label>
+                                <select
+                                    id="worker-select"
+                                    className="modal-worker-select"
+                                    value={selectedWorkerId}
+                                    onChange={(e) => setSelectedWorkerId(e.target.value)}
+                                >
+                                    <option value="">-- Unassigned (Remove worker) --</option>
+                                    {workers.map((worker) => (
+                                        <option key={worker.id} value={worker.id}>
+                                            {worker.first_name} {worker.last_name} ({worker.email})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="modal-status-hint">
+                                ℹ️ Assigning a technician will automatically set the request status to <strong>In Progress</strong> if it is currently pending.
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <div className="modal-footer-actions">
+                                <button
+                                    type="button"
+                                    className="modal-btn-secondary"
+                                    onClick={() => setAssigningRequest(null)}
+                                    disabled={assignLoading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="modal-btn-primary"
+                                    onClick={handleAssignSubmit}
+                                    disabled={assignLoading}
+                                >
+                                    {assignLoading ? (
+                                        <>
+                                            <RotateCw size={14} className="spin-animation" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        "Confirm Assignment"
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Request Detail Modal */}
             {selectedRequest && (
@@ -477,12 +703,30 @@ function AllRequests() {
 
                             <div className="modal-detail-group">
                                 <span className="modal-detail-label">Assigned Technician</span>
-                                <div className="modal-detail-value">
-                                    {selectedRequest.assigned_to ? (
-                                        <span className="assigned-badge">Technician #{selectedRequest.assigned_to}</span>
+                                <div className="modal-detail-value" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    {selectedRequest.worker_first_name || selectedRequest.worker_last_name ? (
+                                        <span className="assigned-badge">
+                                            {selectedRequest.worker_first_name} {selectedRequest.worker_last_name}
+                                        </span>
+                                    ) : selectedRequest.assigned_to ? (
+                                        <span className="assigned-badge">Worker #{selectedRequest.assigned_to}</span>
                                     ) : (
                                         <span className="unassigned-text">Currently Unassigned</span>
                                     )}
+
+                                    <button
+                                        type="button"
+                                        className="assign-action-btn"
+                                        style={{ marginLeft: "12px" }}
+                                        onClick={() => {
+                                            const reqToAssign = selectedRequest;
+                                            setSelectedRequest(null);
+                                            openAssignModal(reqToAssign);
+                                        }}
+                                    >
+                                        <UserCheck size={14} />
+                                        {selectedRequest.assigned_to ? "Change Worker" : "Assign Worker"}
+                                    </button>
                                 </div>
                             </div>
 
