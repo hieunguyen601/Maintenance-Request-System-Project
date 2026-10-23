@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert";
-import { request } from "node:http";
-import app from "../app";
+import request from "supertest";
+import app from "../app.js";
 
 test("Login with missing credentials", async () => {
     const response = await request(app)
@@ -20,4 +20,12 @@ test("Login with incorrect password", async () => {
         });
     
         assert.equal(response.status, 401);
+});
+
+test("Signup should reject empty fields", async () => {
+    const response = await request(app)
+        .post("/api/user")
+        .send({});
+
+        assert.equal(response.status, 400);
 });
