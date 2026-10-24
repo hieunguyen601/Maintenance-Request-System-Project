@@ -6,7 +6,7 @@ A full-stack web application designed to manage maintenance service requests eff
 
 **Frontend**
 - React.js
-- JavaScript
+- TypeScript
 - HTML5 & CSS3
 - React Router
 - Axios
