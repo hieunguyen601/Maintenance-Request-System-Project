@@ -2,7 +2,7 @@
 function AssignedRequests() {
     return (
         <div>
-
+            
         </div>
     );
 }

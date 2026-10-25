@@ -440,6 +440,136 @@ app.patch("/api/manager/requests/:id/assign", authenticateToken, async (req, res
     }
 });
 
+app.get("/api/maintenance/assigned", authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== "maintenance") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
+        const workerId = req.user.id;
+
+        const result = await pool.query(`
+                mr.id,
+                mr.title,
+                mr.priority,
+                mr.status,
+                mr.created_at,
+                c.name AS category,
+                a.unit_number,
+                a.building
+            FROM maintenance_requests mr
+            LEFT JOIN category c
+                ON mr.category_id = c.id
+            LEFT JOIN apartments a
+                ON mr.apartment_id = a.id
+            WHERE mr.assigned_to = $1
+            ORDER BY mr.created_at DESC
+            `, [workerId]);
+
+        res.status(201).json(result.rows);
+    } catch (error) {
+        console.error("Error fetching assigned requests", error);
+        res.json(500).json({
+            message: "Server error",
+        });
+    };
+})
+
+app.patch("/api/maintenance/requests/:id/status", authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (req.user.role !== 'maintenance') {
+        return res.status(403).json({
+            message: "Access denied",
+        });
+    }
+
+    if (!["in_progress", "completed"].includes(status)) {
+        return res.status(400).json({
+            message: "Invalid status"
+        });
+    }
+
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query("BEGIN");
+        const existing = await client.query(`
+            SELECT id, status
+            FROM maintenance_requests
+            WHERE id = $1 AND assigned_to = $2
+            FOR UPDATE
+            `, [id, req.user.id]);
+
+        if (existing.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({
+                message: "Assigned request not found"
+            });
+        }
+
+        const oldStatus = existing.rows[0].status;
+
+        // Enforce the workflow
+        const validTransition =
+            (oldStatus === "assigned" && status === "in_progress") ||
+            (oldStatus === "in_progress" && status === "completed");
+
+        if (!validTransition) {
+            await client.query("ROLLBACK");
+
+            return res.status(400).json({
+                message: "Invalid status transition"
+            });
+        }
+
+        // Update request
+        const result = await client.query(
+            `UPDATE maintenance_requests
+             SET status = $1,
+                 updated_at = CURRENT_TIMESTAMP,
+                 completed_at = CASE
+                     WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP
+                     ELSE completed_at
+                 END
+             WHERE id = $2
+             RETURNING *`,
+            [status, id]
+        );
+
+        // Record status history
+        await client.query(
+            `INSERT INTO status_history
+            (request_id, changed_by, old_status, new_status)
+             VALUES ($1, $2, $3, $4)`,
+            [id, req.user.id, oldStatus, status]
+        );
+
+        await client.query("COMMIT");
+
+        res.status(200).json({
+            message: "Status updated successfully",
+            request: result.rows[0]
+        });
+    } catch (error) {
+        if (client) {
+            await client.query("ROLLBACK").catch(() => {});
+        }
+        console.error(error);
+
+        res.status(500).json({
+            message: "Server error"
+        });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
+});
+
 app.use((err, req, res, next) => {
     console.error("Unhandled error:", err);
     res.status(err.status || 500).json({
