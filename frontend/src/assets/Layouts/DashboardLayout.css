@@ -1,15 +1,14 @@
-body {
-  margin: 0;
-}
-
 .dashboard-layout {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--page);
 }
-
 .dashboard-content {
   flex: 1;
   min-width: 0;
-  padding: 32px;
-  background-color: #f8fafc;
+}
+@media (max-width: 760px) {
+  .dashboard-layout {
+    flex-direction: column;
+  }
 }

@@ -1,11 +1,4 @@
-import RequestTable from "../../components/RequestTable";
-
-function MyRequests() {
-    return (
-        <div>
-            <RequestTable />
-        </div>
-    );
+import RequestsWorkspace from "../../components/RequestsWorkspace";
+export default function MyRequests() {
+  return <RequestsWorkspace role="tenant" />;
 }
-
-export default MyRequests;

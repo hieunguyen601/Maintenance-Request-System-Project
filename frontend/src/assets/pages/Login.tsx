@@ -1,120 +1,111 @@
-import googleIcon from "../images/google.png";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
+import { useState, type FormEvent } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import api from "../../services/api";
-import { useState, type FormEvent, type ChangeEvent } from "react";
-import { isAxiosError } from "axios";
-import "./Login.css";
-
-function Login() {
-    const [loginData, setLoginData] = useState({
-        email: "",
-        password: "",
-    });
-
-    const [error, setError] = useState("");
-
-    const navigate = useNavigate();
-
-    const handleLogin = (event: ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = event.target;
-        setLoginData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
-    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setError("");
-
-        try {
-            const response = await api.post("/login", loginData);
-
-            console.log("Signed In Successfully!", response.data);
-            localStorage.setItem("token", response.data.token);
-
-            const role = response.data.user.role;
-
-            if (role === "tenant") {
-                navigate("/tenant/dashboard", { replace: true });
-            } else if (role === "maintenance") {
-                navigate("/maintenance/dashboard", {
-                    replace: true,
-                });
-            } else if (role === "manager") {
-                navigate("/manager/dashboard", { replace: true });
-            }
-        } catch (err: unknown) {
-            if (isAxiosError(err) && err.response?.status === 401) {
-                setError("Invalid email or password. Please try again!");
-            } else {
-                setError("Something went wrong. Please try again!");
-            }
-        }
-    };
-
-    return (
-        <div className="login-page">
-            <div className="login-card">
-                <h1 className="login-title">Maintenance Services</h1>
-                <h2 className="login-subtitle">Welcome Back</h2>
-                {error && (
-                    <p className="login-error" role="alert">
-                        {error}
-                    </p>
-                )}
-                <form className="login-form" onSubmit={handleSubmit}>
-                    <div className="input-group email-input">
-                        <label htmlFor="email">Email</label>
-                        <input
-                            type="email"
-                            name="email"
-                            id="email"
-                            placeholder="name@example.com"
-                            value={loginData.email}
-                            onChange={handleLogin}
-                            required
-                        />
-                    </div>
-
-                    <div className="input-group password-input">
-                        <label htmlFor="password">Password</label>
-                        <input
-                            type="password"
-                            name="password"
-                            id="password"
-                            placeholder="Enter your password"
-                            value={loginData.password}
-                            onChange={handleLogin}
-                            required
-                        />
-                    </div>
-
-                    <button type="button" className="forgot-password">
-                        Forgot Password?
-                    </button>
-
-                    <button type="submit" className="signIn-btn">
-                        Sign in
-                    </button>
-
-                    <div className="divider">
-                        <span>or continue with</span>
-                    </div>
-
-                    <button type="button" className="google-login">
-                        <img src={googleIcon} alt="Google" />
-                        <span className="google-btn-text">Google</span>
-                    </button>
-                </form>
-
-                <p className="signup-prompt">
-                    Don't have an account yet?{" "}
-                    <Link to="/signup">Register for free</Link>
-                </p>
-            </div>
+import type { Role } from "../../services/types";
+import { errorMessage } from "../../services/errors";
+import AuthLayout from "../components/AuthLayout";
+export default function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const signin = async (url: string, body: object) => {
+    setPending(true);
+    setError("");
+    try {
+      const { data } = await api.post<{ token: string; user: { role: Role } }>(
+        url,
+        body,
+      );
+      if (!["tenant", "maintenance", "manager"].includes(data.user.role))
+        throw new Error("Invalid role");
+      localStorage.setItem("token", data.token);
+      navigate(`/${data.user.role}/dashboard`, { replace: true });
+    } catch (err) {
+      setError(
+        errorMessage(
+          err,
+          "Could not sign in. Check your connection and try again.",
+        ),
+      );
+    } finally {
+      setPending(false);
+    }
+  };
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void signin("/login", form);
+  };
+  return (
+    <AuthLayout>
+      <h1 className="login-title">Sign in</h1>
+      <p className="login-subtitle">Enter your account details to continue.</p>
+      {location.state?.message && (
+        <p className="login-notice" role="status">
+          {location.state.message}
+        </p>
+      )}
+      {error && (
+        <p className="login-error" role="alert">
+          {error}
+        </p>
+      )}
+      <form className="login-form" onSubmit={submit}>
+        <div className="input-group">
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="name@example.com"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
         </div>
-    );
+        <div className="input-group">
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+        </div>
+        <button className="signIn-btn" disabled={pending}>
+          {pending ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+      {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+        <>
+          <div className="divider">
+            <span>or continue with</span>
+          </div>
+          <div className="auth-google">
+            {!pending && (
+              <GoogleLogin
+                onSuccess={(response) => {
+                  if (response.credential)
+                    void signin("/auth/google", {
+                      credential: response.credential,
+                    });
+                  else setError("No Google credential received.");
+                }}
+                onError={() =>
+                  setError("Google login failed. Please try again.")
+                }
+              />
+            )}
+          </div>
+        </>
+      )}
+      <p className="signup-prompt">
+        New here? <Link to="/signup">Create an account</Link>
+      </p>
+    </AuthLayout>
+  );
 }
-
-export default Login;

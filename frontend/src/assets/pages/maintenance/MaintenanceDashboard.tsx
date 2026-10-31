@@ -1,9 +1,4 @@
-function MaintenanceDashboard() {
-    return (
-        <div>
-            <h2>Maintenance Dashboard</h2>
-        </div>
-    );
+import RequestsWorkspace from "../../components/RequestsWorkspace";
+export default function MaintenanceDashboard() {
+  return <RequestsWorkspace role="maintenance" overview />;
 }
-
-export default MaintenanceDashboard;

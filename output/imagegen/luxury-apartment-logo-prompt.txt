@@ -1,0 +1,5 @@
+Tool: built-in image_gen.imagegen
+Edit target: /home/henrynguyen/Documents/b15d3bb6729cb348e13c38803d894d38.jpg
+Final asset: frontend/public/luxury-apartment-logo.png
+
+Use case: text-localization. Edit target: the supplied MT APARTMENTS raster logo. Replace only the words "MT APARTMENTS" with the exact uppercase text "LUXURY APARTMENT" (singular). Keep the silver/white buildings and house-roof illustration, windows, black textured background, metallic lettering style, subtle shadows, underline, centered arrangement, and original landscape proportions unchanged. Place the new text in the same single centered line under the buildings. Adjust only the font size or spacing as needed to fit the longer wording cleanly with comfortable side margins. Preserve the full logo and background; do not crop any part. Final visible text must read exactly "LUXURY APARTMENT".

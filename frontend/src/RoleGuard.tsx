@@ -1,65 +1,64 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router";
+import { isAxiosError } from "axios";
 import api from "./services/api";
-type Role = "tenant" | "maintenance" | "manager";
-
-type Props = {
-    allowedRole: Role;
-};
-
-const dashboardPaths: Record<Role, string> = {
-    tenant: "/tenant/dashboard",
-    maintenance: "/maintenance/dashboard",
-    manager: "/manager/dashboard",
-};
-
-function RoleGuard({ allowedRole }: Props) {
-    const [role, setRole] = useState<Role | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [authenticated, setAuthenticated] = useState(false);
-
-    useEffect(() => {
-        let active = true;
-
-        const checkUser = async () => {
-            try {
-                const response = await api.get<{ role: Role }>("/me");
-
-                if (active) {
-                    setRole(response.data.role);
-                    setAuthenticated(true);
-                }
-            } catch (error) {
-                if (active) {
-                    setAuthenticated(false);
-                }
-            } finally {
-                if (active) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        checkUser();
-
-        return () => {
-            active = false;
-        };
-    }, []);
-
-    if (loading) {
-        return <p>Checking session...</p>;
+import type { Role } from "./services/types";
+export default function RoleGuard({ allowedRole }: { allowedRole: Role }) {
+  const [role, setRole] = useState<Role | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const check = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    if (!localStorage.getItem("token")) {
+      setRole(null);
+      setLoading(false);
+      return;
     }
-
-    if (!authenticated || !role) {
-        return <Navigate to="/login" replace />;
+    try {
+      const { data } = await api.get<{ role: Role }>("/me");
+      setRole(
+        ["tenant", "maintenance", "manager"].includes(data.role)
+          ? data.role
+          : null,
+      );
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 401) {
+        localStorage.removeItem("token");
+        setRole(null);
+      } else
+        setError(
+          "Unable to reach the server. Check that the backend is running and try again.",
+        );
+    } finally {
+      setLoading(false);
     }
-
-    if (role !== allowedRole) {
-        return <Navigate to={dashboardPaths[role]} replace />;
-    }
-
-    return <Outlet />;
+  }, []);
+  useEffect(() => {
+    void check();
+    const expire = () => {
+      setRole(null);
+    };
+    window.addEventListener("session-expired", expire);
+    return () => window.removeEventListener("session-expired", expire);
+  }, [check]);
+  if (loading)
+    return (
+      <main className="empty-state" role="status">
+        Checking your session…
+      </main>
+    );
+  if (error)
+    return (
+      <main className="empty-state">
+        <p role="alert">{error}</p>
+        <button className="primary-button" onClick={() => void check()}>
+          Try again
+        </button>
+      </main>
+    );
+  if (!role) return <Navigate to="/login" replace />;
+  if (role !== allowedRole)
+    return <Navigate to={`/${role}/dashboard`} replace />;
+  return <Outlet />;
 }
-
-export default RoleGuard;

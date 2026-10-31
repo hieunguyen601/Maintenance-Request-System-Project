@@ -1,9 +1,4 @@
-function ManagerDashboard() {
-    return (
-        <div>
-            <h2>Manager Dashboard</h2>
-        </div>
-    );
+import RequestsWorkspace from "../../components/RequestsWorkspace";
+export default function ManagerDashboard() {
+  return <RequestsWorkspace role="manager" overview />;
 }
-
-export default ManagerDashboard;
