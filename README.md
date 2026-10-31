@@ -1,140 +1,79 @@
-# Maintenance Services Management System
+# Maintenance Request Management System
 
-A React + TypeScript frontend and Express + PostgreSQL backend for managing apartment maintenance from submission to completion.
+A full-stack web application designed to help apartment tenants submit maintenance requests and allow managers and maintenance workers to track and manage them efficiently.
 
 ## Features
 
-- Residents: password or Google signup/login, apartment details, maintenance requests, searchable status tracking, comments, profile editing, and password changes.
-- Property managers: live dashboard, all requests, worker assignment, apartment/tenant assignment, and creation of tenant, maintenance, and manager accounts.
-- Maintenance staff: assigned work orders, start/complete actions, request details, and conversations.
-- Database-backed dashboards, status history, input validation, JWT sessions, role and ownership checks, and server-side Google credential verification.
-- Responsive layouts, loading/error/empty states, keyboard-accessible request dialogs, and optional Google sign-in.
+- **User Authentication:** Sign up and log in using email/password or Google.
+- **Role-Based Dashboards:** Separate dashboards for tenants, maintenance workers, and managers.
+- **Tenants:** Submit maintenance requests and track their status.
+- **Managers:** View all requests and assign maintenance workers.
+- **Maintenance Workers:** View assigned tasks and update their progress.
+- **Request Tracking:** Track requests from pending to completed.
 
-Public registration creates **tenant** accounts. Managers create staff accounts. Each tenant has one apartment; a manager must assign it before the tenant can submit a request. A work order moves through **pending → assigned → in progress → completed**. Only its assigned worker can start or complete it. Completed work orders cannot be reassigned or reopened. Managers may reassign unfinished work.
+## Tech Stack
 
-## Local setup
+**Frontend:** React, TypeScript, Vite, HTML, CSS
 
-Requirements: Node.js 24, npm, and PostgreSQL. Use `nvm use` if you manage Node versions with nvm. Create a PostgreSQL database first, for example `createdb maintenance_services`, using your PostgreSQL account.
+**Backend:** Node.js, Express.js, REST APIs
 
-From the project root:
+**Database:** PostgreSQL
 
-```bash
-npm --prefix backend ci
-npm --prefix frontend ci
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+**Authentication:** JWT, Google OAuth
+
+**Deployment:** Vercel (Frontend), Render (Backend), Neon (Database)
+
+## Project Structure
+
+```text
+Maintenance-Request-System-Project/
+├── frontend/     # React + TypeScript
+├── backend/      # Express APIs
+└── README.md
 ```
 
-If `.env` files already exist, keep them and add only missing settings. Edit `backend/.env` to match your PostgreSQL database. Set `JWT_SECRET` to a long random value; generate one with:
+## Getting Started
 
-```bash
-node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
-```
+1. Clone the repository:
 
-Then initialize the database and create your initial manager account:
+   ```bash
+   git clone https://github.com/hieunguyen601/Maintenance-Request-System-Project.git
+   ```
 
-```bash
-npm run db:setup
-npm run manager:create
-```
+2. Install dependencies in both folders:
 
-The manager command prompts for names, email, and a hidden password. It creates a new account; it does not overwrite an existing account. If a manager account already exists, use that account instead.
+   ```bash
+   cd frontend
+   npm install
 
-Database setup is transactional and can be repeated. It creates missing tables, adds indexes, and adds default categories while preserving existing records. It will stop and roll back if existing duplicate emails, units, or tenant assignments prevent uniqueness; resolve those records before retrying.
+   cd ../backend
+   npm install
+   ```
 
-Start both services:
+3. Configure the required environment variables for PostgreSQL, JWT, and Google authentication.
 
-```bash
-npm run dev
-```
+4. Start the backend:
 
-Open **http://localhost:5173**. The backend defaults to **http://localhost:5000**; Vite proxies `/api` to the `PORT` in `backend/.env`. You can also run `npm run dev` separately inside `backend/` and `frontend/`. Stop earlier dev servers before starting a second copy. A port conflict reports `EADDRINUSE`; stop the existing process or change `PORT` and restart Vite.
+   ```bash
+   npm start
+   ```
 
-### First workflow
+5. Start the frontend in a separate terminal:
 
-1. Sign in as a manager. Use **Accounts & Team** to create maintenance staff.
-2. Register a tenant, or create one through the manager account.
-3. Use **Apartments** to add a unit and assign the tenant.
-4. Sign in as the tenant and create a maintenance request.
-5. Assign the request to a worker from the manager's request tracker.
-6. Sign in as that worker, select **Start work**, add an update, and select **Complete**.
-7. The tenant sees the updated status, comments, and history in request details.
+   ```bash
+   cd frontend
+   npm run dev
+   ```
 
-### Google sign-in
+## How It Works
 
-Create a Web OAuth client in Google Cloud and configure the authorized JavaScript origins for your frontend (locally `http://localhost:5173`). Set the **same client ID** in:
+1. A tenant submits a maintenance request.
+2. A manager reviews the request and assigns a maintenance worker.
+3. The maintenance worker updates the request status.
+4. The tenant and manager can track its progress.
 
-```env
-# backend/.env
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+## Author
 
-# frontend/.env
-VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-```
+**Henry Nguyen**
 
-Restart both services after changing environment variables. Google credentials are verified by the backend before any account is created. New Google accounts are tenants; an existing Google account signs in to its current role. A password account with the same email is not automatically linked; sign in using its password. Google-only accounts do not have a local password. No Google client secret belongs in frontend environment variables.
-
-If the frontend client ID is unset, Google buttons are hidden and password authentication remains available. A real Google sign-in requires the configured OAuth client and an interactive browser.
-
-### Environment settings
-
-| Variable                                                  | Location | Purpose                                                                                     |
-| --------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------- |
-| `PORT`                                                    | backend  | API/production port, default `5000`                                                         |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | backend  | PostgreSQL connection                                                                       |
-| `DATABASE_URL`                                            | backend  | Neon/PostgreSQL connection URL; overrides local `DB_*` settings                             |
-| `DIRECT_DATABASE_URL`                                     | backend  | Optional direct URL for database setup and manager creation                                 |
-| `TRUST_PROXY`                                             | backend  | Trusted proxy hop count; `0` locally, `1` behind the Render proxy                           |
-| `SERVE_FRONTEND`                                          | backend  | `false` for Render; root `npm start` enables the combined server                            |
-| `JWT_SECRET`                                              | backend  | Required session signing secret                                                             |
-| `FRONTEND_ORIGIN`                                         | backend  | Comma-separated allowed browser origins; default `http://localhost:5173`                    |
-| `GOOGLE_CLIENT_ID`                                        | backend  | Google ID-token audience, optional                                                          |
-| `VITE_GOOGLE_CLIENT_ID`                                   | frontend | Google button client ID, optional                                                           |
-| `VITE_API_BASE_URL`                                       | frontend | Optional API URL ending in `/api`; omit for the development proxy or same-origin production |
-
-Frontend `VITE_` settings are public and embedded at build time. Keep `.env` files private and out of Git. Real deployments should supply environment settings through the host, use HTTPS and a persistent PostgreSQL database, and restrict `FRONTEND_ORIGIN` to the deployed frontend.
-
-## Combined local production build
-
-```bash
-npm run build
-npm start
-```
-
-The Express server serves `frontend/dist` and `/api` from the same origin, including client-side route refreshes. Open `http://localhost:5000` (or your configured port). A reverse proxy can terminate HTTPS. This repository has not been deployed to an external host.
-
-## Vercel + Render + Neon
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the exact service settings, Neon schema and manager setup, Google OAuth origin, and environment variables. The repository includes `frontend/vercel.json` and `render.yaml`.
-
-## Verification
-
-```bash
-npm test
-npm run test:integration
-npm run build
-npm run test:production
-npm run test:render
-npm run test:vercel
-```
-
-The Render check copies backend source into a temporary directory, installs production dependencies with `npm ci --omit=dev`, and verifies API-only startup, database health, Vercel CORS, protected routes, and graceful shutdown. It uses your configured database for the read-only health query.
-
-The production smoke check uses an available temporary port and verifies the built frontend, client-side routes, protected APIs, and database health, then stops its server.
-
-Unit/API tests mock external Google and database calls. Integration checks use the configured PostgreSQL database to create a uniquely named temporary schema, exercise the full workflow, and remove that schema in a `finally` block. The database user needs schema-creation permission. Existing application records are not modified. Google signature verification is covered with mocked responses; live OAuth still requires browser verification.
-
-`GET /api/health` checks PostgreSQL connectivity. Protected endpoints require `Authorization: Bearer <token>`.
-
-## Project structure
-
-- `backend/app.js`: API routes, authentication, validation, and workflow rules.
-- `backend/sql/schema.sql`: repeatable schema/index/category setup.
-- `backend/scripts/`: database setup, initial manager creation, and isolated integration checks.
-- `frontend/src/assets/components/`: shared request tracker, request conversation/history dialog, and navigation.
-- `frontend/src/assets/pages/`: authentication, apartment/account/profile forms, and role dashboards.
-- `scripts/`: combined local development and production startup.
-
-Nodemon uses an explicit `minimatch` override to the fixed 11.x release; its development restart behavior is checked when updating this dependency.
-
-Author: Henry Nguyen.
+Computer Science Student | University of Houston
