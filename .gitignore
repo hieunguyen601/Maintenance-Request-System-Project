@@ -13,6 +13,7 @@ npm-debug.log*
 # Build files
 dist/
 build/
+.vercel/
 
 # OS files
 .DS_Store

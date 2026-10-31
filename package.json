@@ -10,9 +10,11 @@
     "test:integration": "npm --prefix backend run test:integration",
     "db:setup": "npm --prefix backend run db:setup",
     "manager:create": "npm --prefix backend run manager:create",
-    "test:production": "node backend/scripts/production-smoke.js"
+    "test:production": "node backend/scripts/production-smoke.js",
+    "test:render": "npm --prefix backend run test:render",
+    "test:vercel": "node scripts/vercel-smoke.mjs"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": "24.x"
   }
 }

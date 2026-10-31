@@ -8,6 +8,11 @@ import { fileURLToPath } from "node:url";
 
 const app = express();
 app.disable("x-powered-by");
+const proxyHops = Number(process.env.TRUST_PROXY || 0);
+if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 10) {
+  throw new Error("TRUST_PROXY must be an integer from 0 to 10.");
+}
+app.set("trust proxy", proxyHops);
 app.use(
   cors({
     origin: (process.env.FRONTEND_ORIGIN || "http://localhost:5173")
@@ -526,13 +531,20 @@ app.patch(
     res.json({ message: "Status updated.", request });
   },
 );
-if (process.env.NODE_ENV === "production") {
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.SERVE_FRONTEND === "true"
+) {
   const directory = fileURLToPath(
     new URL("../frontend/dist/", import.meta.url),
   );
   app.use(express.static(directory));
   app.get(/^(?!\/api(?:\/|$)).*/, (req, res) =>
     res.sendFile(`${directory}/index.html`),
+  );
+} else {
+  app.get("/", (req, res) =>
+    res.json({ name: "Luxury Apartment API", health: "/api/health" }),
   );
 }
 app.use((req, res) => res.status(404).json({ message: "Endpoint not found." }));

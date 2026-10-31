@@ -1,4 +1,4 @@
-import "dotenv/config";
+import { databaseConfig } from "../database-config.js";
 import pg from "pg";
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -7,14 +7,16 @@ import bcrypt from "bcrypt";
 import request from "supertest";
 
 const schema = `maintenance_test_${randomBytes(8).toString("hex")}`;
-const admin = new pg.Client({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  connectionTimeoutMillis: 5000,
-});
+const adminConfig = databaseConfig(process.env, { direct: true });
+if (adminConfig.connectionString) {
+  if (new URL(adminConfig.connectionString).hostname.includes("-pooler.")) {
+    throw new Error(
+      "Integration checks require a direct connection. Set DIRECT_DATABASE_URL for a test database.",
+    );
+  }
+  process.env.DATABASE_URL = adminConfig.connectionString;
+}
+const admin = new pg.Client(adminConfig);
 let pool;
 let created = false;
 let checks = 0;
@@ -100,16 +102,13 @@ try {
     ).token,
   );
   const worker = expect(
-    await api
-      .post("/api/manager/users")
-      .set(managerAuth)
-      .send({
-        first_name: "Test",
-        last_name: "Worker",
-        email: "worker@example.test",
-        password,
-        role: "maintenance",
-      }),
+    await api.post("/api/manager/users").set(managerAuth).send({
+      first_name: "Test",
+      last_name: "Worker",
+      email: "worker@example.test",
+      password,
+      role: "maintenance",
+    }),
     201,
   );
   const workerAuth = auth(
@@ -119,16 +118,13 @@ try {
     ).token,
   );
   const worker2 = expect(
-    await api
-      .post("/api/manager/users")
-      .set(managerAuth)
-      .send({
-        first_name: "Other",
-        last_name: "Worker",
-        email: "otherworker@example.test",
-        password,
-        role: "maintenance",
-      }),
+    await api.post("/api/manager/users").set(managerAuth).send({
+      first_name: "Other",
+      last_name: "Worker",
+      email: "otherworker@example.test",
+      password,
+      role: "maintenance",
+    }),
     201,
   );
   const worker2Auth = auth(
@@ -153,15 +149,12 @@ try {
   };
   expect(await api.post("/api/request").set(tenantAuth).send(data), 409);
   const apartment = expect(
-    await api
-      .post("/api/apartment")
-      .set(managerAuth)
-      .send({
-        building: "Test Building",
-        unit_number: "101",
-        floor: "1",
-        tenant_id: tenant.id,
-      }),
+    await api.post("/api/apartment").set(managerAuth).send({
+      building: "Test Building",
+      unit_number: "101",
+      floor: "1",
+      tenant_id: tenant.id,
+    }),
     201,
   );
   expect(await api.post("/api/apartment").set(tenantAuth).send({}), 403);
@@ -242,14 +235,11 @@ try {
     200,
   );
   const comment = expect(
-    await api
-      .post("/api/comment")
-      .set(workerAuth)
-      .send({
-        request_id: work.id,
-        user_id: outsider.id,
-        message: "Repair in progress",
-      }),
+    await api.post("/api/comment").set(workerAuth).send({
+      request_id: work.id,
+      user_id: outsider.id,
+      message: "Repair in progress",
+    }),
     201,
   );
   assert.equal(comment.user_id, worker.id);

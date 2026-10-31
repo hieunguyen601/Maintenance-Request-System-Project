@@ -1,8 +1,9 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
-  timeout: 15000,
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, "") || "/api",
+  timeout: 60000,
 });
 
 api.interceptors.request.use(

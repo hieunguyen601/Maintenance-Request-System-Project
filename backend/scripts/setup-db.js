@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
-import pool from "../db.js";
+import pg from "pg";
+import { databaseConfig } from "../database-config.js";
+const pool = new pg.Pool(databaseConfig(process.env, { direct: true }));
 const client = await pool.connect();
 try {
   await client.query("BEGIN");

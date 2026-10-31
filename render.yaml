@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: luxury-apartment-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        value: https://maintenance-request-system-project.vercel.app
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SERVE_FRONTEND
+        value: "false"
+      - key: GOOGLE_CLIENT_ID
+        sync: false

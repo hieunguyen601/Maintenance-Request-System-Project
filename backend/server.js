@@ -4,9 +4,9 @@ const port = Number(process.env.PORT || 5000);
 if (!Number.isInteger(port) || port < 1 || port > 65535)
   throw new Error("PORT must be an integer between 1 and 65535.");
 if (!process.env.JWT_SECRET)
-  throw new Error("JWT_SECRET is required in backend/.env.");
+  throw new Error("JWT_SECRET environment variable is required.");
 
-const server = app.listen(port, (error) => {
+const server = app.listen(port, "0.0.0.0", (error) => {
   if (error) {
     console.error(`Failed to start server on port ${port}:`, error.message);
     process.exitCode = 1;

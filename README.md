@@ -14,7 +14,7 @@ Public registration creates **tenant** accounts. Managers create staff accounts.
 
 ## Local setup
 
-Requirements: Node.js 22.12+ (or a newer supported LTS), npm, and PostgreSQL. Create a PostgreSQL database first, for example `createdb maintenance_services`, using your PostgreSQL account.
+Requirements: Node.js 24, npm, and PostgreSQL. Use `nvm use` if you manage Node versions with nvm. Create a PostgreSQL database first, for example `createdb maintenance_services`, using your PostgreSQL account.
 
 From the project root:
 
@@ -82,6 +82,10 @@ If the frontend client ID is unset, Google buttons are hidden and password authe
 | --------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------- |
 | `PORT`                                                    | backend  | API/production port, default `5000`                                                         |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | backend  | PostgreSQL connection                                                                       |
+| `DATABASE_URL`                                            | backend  | Neon/PostgreSQL connection URL; overrides local `DB_*` settings                             |
+| `DIRECT_DATABASE_URL`                                     | backend  | Optional direct URL for database setup and manager creation                                 |
+| `TRUST_PROXY`                                             | backend  | Trusted proxy hop count; `0` locally, `1` behind the Render proxy                           |
+| `SERVE_FRONTEND`                                          | backend  | `false` for Render; root `npm start` enables the combined server                            |
 | `JWT_SECRET`                                              | backend  | Required session signing secret                                                             |
 | `FRONTEND_ORIGIN`                                         | backend  | Comma-separated allowed browser origins; default `http://localhost:5173`                    |
 | `GOOGLE_CLIENT_ID`                                        | backend  | Google ID-token audience, optional                                                          |
@@ -90,7 +94,7 @@ If the frontend client ID is unset, Google buttons are hidden and password authe
 
 Frontend `VITE_` settings are public and embedded at build time. Keep `.env` files private and out of Git. Real deployments should supply environment settings through the host, use HTTPS and a persistent PostgreSQL database, and restrict `FRONTEND_ORIGIN` to the deployed frontend.
 
-## Production build
+## Combined local production build
 
 ```bash
 npm run build
@@ -99,6 +103,10 @@ npm start
 
 The Express server serves `frontend/dist` and `/api` from the same origin, including client-side route refreshes. Open `http://localhost:5000` (or your configured port). A reverse proxy can terminate HTTPS. This repository has not been deployed to an external host.
 
+## Vercel + Render + Neon
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the exact service settings, Neon schema and manager setup, Google OAuth origin, and environment variables. The repository includes `frontend/vercel.json` and `render.yaml`.
+
 ## Verification
 
 ```bash
@@ -106,7 +114,11 @@ npm test
 npm run test:integration
 npm run build
 npm run test:production
+npm run test:render
+npm run test:vercel
 ```
+
+The Render check copies backend source into a temporary directory, installs production dependencies with `npm ci --omit=dev`, and verifies API-only startup, database health, Vercel CORS, protected routes, and graceful shutdown. It uses your configured database for the read-only health query.
 
 The production smoke check uses an available temporary port and verifies the built frontend, client-side routes, protected APIs, and database health, then stops its server.
 

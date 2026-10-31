@@ -1,7 +1,9 @@
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import bcrypt from "bcrypt";
-import pool from "../db.js";
+import pg from "pg";
+import { databaseConfig } from "../database-config.js";
+const pool = new pg.Pool(databaseConfig(process.env, { direct: true }));
 let muted = false;
 const output = new Writable({
   write(chunk, encoding, callback) {
